@@ -5,8 +5,8 @@ import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import com.typesafe.config.Config
-import com.wavesplatform.it.network.client.{NetworkServer, PeerInfo, RawBytes}
-import com.wavesplatform.it.util._
+import com.wavesplatform.it.network.client.{NetworkClient, PeerInfo, RawBytes}
+import com.wavesplatform.it.util.{NetworkSender, _}
 import com.wavesplatform.matcher.api.CancelOrderRequest
 import com.wavesplatform.settings.WavesSettings
 import io.netty.channel.Channel
@@ -255,14 +255,7 @@ class Node(config: Config, val nodeInfo: NodeInfo, client: AsyncHttpClient, time
     post("/debug/blacklist", s"${node.nodeInfo.networkIpAddress}:${node.nodeInfo.hostNetworkPort}").map(_ => ())
 
   def sendByNetwork(message: RawBytes): Future[Unit] = {
-    val allChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE)
-    val establishedConnections = new ConcurrentHashMap[Channel, PeerInfo]
-    val s = new NetworkServer('I', settings, allChannels, establishedConnections)
-    s.connect(new InetSocketAddress("localhost", nodeInfo.hostNetworkPort))
-    waitFor(Future.successful(establishedConnections.size()), (size: Int) => size == 1, 1 seconds).map(_ => {
-      establishedConnections.asScala.head._1.writeAndFlush(message)
-      s.shutdown()
-    })
+    new NetworkSender(new InetSocketAddress("localhost", nodeInfo.hostNetworkPort), 'I', "it-test-client", 4634745848L).sendByNetwork(message)
   }
 }
 
